@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Nuovo Prodotto">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#1A1F22">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <title>Nuovo Prodotto</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="header">
+    <img src="icon-192.png" alt="">
+    <div><h1>Nuovo Prodotto</h1><div class="sotto">Magazzino Cucina</div></div>
+  </div>
+  <div class="contenuto">
+    <div class="campo"><label>Nome prodotto</label><input type="text" id="nome" placeholder="es. Farina 00 kg 25"></div>
+    <div class="riga2">
+      <div class="campo"><label>Quantità</label><input type="number" id="quantita" step="0.01" min="0" placeholder="0"></div>
+      <div class="campo"><label>Unità</label><input type="text" id="unita" placeholder="pz/kg/lt"></div>
+    </div>
+    <div class="campo"><label>Nota (opzionale)</label><input type="text" id="nota" placeholder="es. da Fornitore Rossi"></div>
+    <button class="btn-invia" id="btnInvia">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      Invia
+    </button>
+    <div class="esito" id="esito"></div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
