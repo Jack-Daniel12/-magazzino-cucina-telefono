@@ -17,22 +17,61 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
+  <!-- Schermata mostrata SOLO la primissima volta che si apre la pagina su
+       un telefono: chiede il codice dell'azienda una tantum, poi non
+       ricompare più (resta salvato sul telefono). -->
+  <div class="overlay-codice" id="overlayCodice">
+    <div class="overlay-codice-box">
+      <img src="icon-192.png" alt="">
+      <h2>Codice azienda</h2>
+      <p>Inserisci il codice fornito dal tuo responsabile per collegare questo telefono all'azienda giusta. Va fatto una sola volta.</p>
+      <input type="text" id="inputCodice" placeholder="es. MC-XXXX-XXXX" autocapitalize="characters">
+      <button class="btn-invia" id="btnConfermaCodice">Conferma</button>
+      <div class="esito" id="esitoCodice"></div>
+    </div>
+  </div>
+
   <div class="header">
     <img src="icon-192.png" alt="">
-    <div><h1>Nuovo Prodotto</h1><div class="sotto">Magazzino Cucina</div></div>
+    <div><h1>Nuovo Prodotto</h1><div class="sotto" id="sottotitoloAzienda">Magazzino Cucina</div></div>
   </div>
+
   <div class="contenuto">
     <div class="campo"><label>Nome prodotto</label><input type="text" id="nome" placeholder="es. Farina 00 kg 25"></div>
     <div class="riga2">
       <div class="campo"><label>Quantità</label><input type="number" id="quantita" step="0.01" min="0" placeholder="0"></div>
       <div class="campo"><label>Unità</label><input type="text" id="unita" placeholder="pz/kg/lt"></div>
     </div>
+    <div class="campo"><label>Prezzo unitario (facoltativo)</label><input type="number" id="prezzo" step="0.01" min="0" placeholder="€ 0,00"></div>
     <div class="campo"><label>Nota (opzionale)</label><input type="text" id="nota" placeholder="es. da Fornitore Rossi"></div>
     <button class="btn-invia" id="btnInvia">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
       Invia
     </button>
     <div class="esito" id="esito"></div>
+
+    <!-- Sezione 1: cosa è stato inserito oggi, da tutta l'azienda -->
+    <div class="sezione-elenco">
+      <div class="sezione-titolo">
+        <span>Inseriti oggi</span>
+        <button class="btn-ricarica" id="btnRicaricaOggi" title="Aggiorna">⟳</button>
+      </div>
+      <div class="lista-scorrevole" id="listaOggi">
+        <div class="lista-vuota">Ancora nessun prodotto inserito oggi.</div>
+      </div>
+    </div>
+
+    <!-- Sezione 2: cosa c'è già in magazzino, per coordinarsi -->
+    <div class="sezione-elenco">
+      <div class="sezione-titolo">
+        <span>Già in magazzino</span>
+        <button class="btn-ricarica" id="btnRicaricaGiacenze" title="Aggiorna">⟳</button>
+      </div>
+      <div class="lista-scorrevole" id="listaGiacenze">
+        <div class="lista-vuota">Nessun dato disponibile ancora.</div>
+      </div>
+    </div>
   </div>
 
   <script src="config.js"></script>
