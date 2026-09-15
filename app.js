@@ -2,6 +2,9 @@
 (function () {
   var ICONA_OK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
   var ICONA_ERR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/></svg>';
+  var ICONA_INVIA = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
+
+  var INTERVALLO_AGGIORNAMENTO_MS = 60 * 1000; // ogni minuto, come richiesto
 
   function ottieniIdDispositivo() {
     var id = localStorage.getItem('idDispositivo');
@@ -13,10 +16,6 @@
   }
 
   // ---------------- CHIAMATA AL SERVER, CON RIPROVA AUTOMATICO ----------------
-  // Stessa logica già usata nel programma PC e nel pannello di
-  // amministrazione: fino a 4 tentativi in background, con una pausa
-  // crescente, prima di arrendersi — Apps Script può metterci qualche
-  // secondo a "svegliarsi" se non viene chiamato da un po'.
   var TENTATIVI_MASSIMI = 4;
   var TIMEOUT_MS = 15000;
 
@@ -74,11 +73,21 @@
   var idDispositivo = ottieniIdDispositivo();
   var codiceAzienda = localStorage.getItem('codiceAzienda') || '';
   var bloccoAzienda = false;
+  var batch = [];
+  var schedaCorrente = 'oggi';
+  var intervalloAggiornamento = null;
 
   function escapeHtml(testo) {
     var div = document.createElement('div');
     div.textContent = String(testo == null ? '' : testo);
     return div.innerHTML;
+  }
+
+  function formattaOra(timestamp) {
+    try {
+      var d = new Date(timestamp);
+      return d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    } catch (e) { return ''; }
   }
 
   // Mostrato quando il server risponde con bloccato:true (azienda
@@ -88,6 +97,7 @@
   // pagina, senza dover reinserire il codice da capo.
   function mostraBloccoAzienda(motivo) {
     bloccoAzienda = true;
+    if (intervalloAggiornamento) { clearInterval(intervalloAggiornamento); intervalloAggiornamento = null; }
     var banner = document.getElementById('bannerBloccoAzienda');
     if (!banner) {
       banner = document.createElement('div');
@@ -96,14 +106,8 @@
       document.querySelector('.contenuto').prepend(banner);
     }
     banner.innerHTML = ICONA_ERR + (motivo || 'Questa azienda risulta sospesa. Contatta il fornitore.');
-    document.getElementById('btnInvia').disabled = true;
-  }
-
-  function formattaOra(timestamp) {
-    try {
-      var d = new Date(timestamp);
-      return d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-    } catch (e) { return ''; }
+    document.getElementById('btnInviaTutti').disabled = true;
+    document.getElementById('btnAggiungi').disabled = true;
   }
 
   // ---------------- SCHERMATA CODICE AZIENDA (una tantum) ----------------
@@ -140,8 +144,7 @@
       localStorage.setItem('codiceAzienda', valore);
       document.getElementById('sottotitoloAzienda').textContent = d.cliente || 'Magazzino Cucina';
       mostraOverlayCodice(false);
-      caricaProdottiOggi();
-      caricaGiacenzeAzienda();
+      avviaAggiornamentoPeriodico();
     } catch (e) {
       esito.className = 'esito errore';
       esito.innerHTML = ICONA_ERR + 'Impossibile contattare il server. Controlla la connessione e riprova.';
@@ -155,41 +158,95 @@
     if (e.key === 'Enter') confermaCodice();
   });
 
-  // ---------------- INVIO NUOVO PRODOTTO ----------------
+  // ---------------- AGGIUNTA ALLA LISTA "DA INVIARE" ----------------
 
-  document.getElementById('btnInvia').addEventListener('click', async function () {
+  function renderBatch() {
+    var el = document.getElementById('listaBatch');
+    var titolo = document.getElementById('titoloBatch');
+    var btnInvia = document.getElementById('btnInviaTutti');
+    var testoBtn = document.getElementById('testoBtnInvia');
+
+    titolo.textContent = 'Da inviare' + (batch.length ? ' (' + batch.length + ')' : '');
+    if (!btnInvia.classList.contains('in-corso')) {
+      testoBtn.textContent = 'Invia tutti' + (batch.length ? ' (' + batch.length + ')' : '');
+      btnInvia.disabled = batch.length === 0 || bloccoAzienda;
+    }
+
+    if (batch.length === 0) {
+      el.innerHTML = '<div class="batch-vuoto">Ancora nessun prodotto aggiunto.</div>';
+      return;
+    }
+    el.innerHTML = batch.map(function (p, i) {
+      var dettagli = escapeHtml(p.quantita) + ' ' + escapeHtml(p.unitaMisura || '') + (p.prezzoUnitario ? ' · € ' + escapeHtml(p.prezzoUnitario) : '');
+      return '<div class="riga-batch">' +
+        '<div class="info"><div class="nome">' + escapeHtml(p.nome) + '</div><div class="dettaglio">' + dettagli + '</div></div>' +
+        '<button class="rimuovi" data-rimuovi="' + i + '" ' + (bloccoAzienda ? 'disabled' : '') + '>✕</button>' +
+        '</div>';
+    }).join('');
+    el.querySelectorAll('[data-rimuovi]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        batch.splice(Number(btn.dataset.rimuovi), 1);
+        renderBatch();
+      });
+    });
+  }
+
+  document.getElementById('btnAggiungi').addEventListener('click', function () {
     var nome = document.getElementById('nome').value.trim();
     var quantita = document.getElementById('quantita').value;
-    var unita = document.getElementById('unita').value.trim();
-    var prezzo = document.getElementById('prezzo').value;
-    var nota = document.getElementById('nota').value.trim();
-    var esito = document.getElementById('esito');
+    var esito = document.getElementById('esitoAggiungi');
     esito.className = 'esito';
     esito.innerHTML = '';
 
     if (!nome || !quantita) {
       esito.className = 'esito errore';
-      esito.innerHTML = ICONA_ERR + 'Scrivi almeno nome e quantita.';
+      esito.innerHTML = ICONA_ERR + 'Scrivi almeno nome e quantità.';
       return;
     }
 
-    var btn = document.getElementById('btnInvia');
-    impostaCaricamento(btn, 'Invio in corso...');
+    batch.push({
+      nome: nome,
+      quantita: quantita,
+      unitaMisura: document.getElementById('unita').value.trim(),
+      prezzoUnitario: document.getElementById('prezzo').value,
+      nota: document.getElementById('nota').value.trim()
+    });
+
+    ['nome', 'quantita', 'unita', 'prezzo', 'nota'].forEach(function (id) { document.getElementById(id).value = ''; });
+    document.getElementById('nome').focus();
+    renderBatch();
+  });
+
+  // ---------------- INVIO DI TUTTO IL GRUPPO ----------------
+
+  document.getElementById('btnInviaTutti').addEventListener('click', async function () {
+    if (batch.length === 0 || bloccoAzienda) return;
+
+    var btn = document.getElementById('btnInviaTutti');
+    var testoBtn = document.getElementById('testoBtnInvia');
+    var esito = document.getElementById('esitoInvio');
+    esito.className = 'esito';
+    esito.innerHTML = '';
+
+    var testoOriginale = testoBtn.textContent;
+    testoBtn.textContent = 'Invio in corso...';
+    btn.disabled = true;
+    btn.classList.add('in-corso');
 
     try {
-      var d = await chiamaServer('nuovoProdotto', {
-        nome: nome, quantita: quantita, unitaMisura: unita, prezzoUnitario: prezzo || '',
-        nota: nota, idDispositivo: idDispositivo, codice: codiceAzienda
+      var d = await chiamaServer('nuoviProdottiMultipli', {
+        idDispositivo: idDispositivo,
+        codice: codiceAzienda,
+        prodotti: batch.map(function (p) {
+          return { nome: p.nome, quantita: p.quantita, unitaMisura: p.unitaMisura, prezzoUnitario: p.prezzoUnitario || '', nota: p.nota };
+        })
       });
+
       if (d.successo) {
+        var n = batch.length;
+        batch = [];
         esito.className = 'esito ok';
-        esito.innerHTML = ICONA_OK + 'Prodotto inviato correttamente.';
-        document.getElementById('nome').value = '';
-        document.getElementById('quantita').value = '';
-        document.getElementById('unita').value = '';
-        document.getElementById('prezzo').value = '';
-        document.getElementById('nota').value = '';
-        document.getElementById('nome').focus();
+        esito.innerHTML = ICONA_OK + n + (n === 1 ? ' prodotto inviato.' : ' prodotti inviati insieme.');
         caricaProdottiOggi();
       } else {
         if (d.bloccato) { mostraBloccoAzienda(d.errore); return; }
@@ -200,16 +257,26 @@
       esito.className = 'esito errore';
       esito.innerHTML = ICONA_ERR + 'Impossibile contattare il server dopo vari tentativi. Controlla la connessione e riprova.';
     } finally {
-      rimuoviCaricamento(btn);
+      btn.classList.remove('in-corso');
+      renderBatch(); // ripristina il testo/stato corretto del pulsante (Invia tutti (N) o disabilitato)
     }
   });
 
-  // ---------------- LISTA "INSERITI OGGI" ----------------
+  // ---------------- SCHEDE "OGGI" / "MAGAZZINO" ----------------
+
+  document.querySelectorAll('.scheda-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.scheda-btn').forEach(function (b) { b.classList.remove('selezionata'); });
+      btn.classList.add('selezionata');
+      schedaCorrente = btn.dataset.scheda;
+      document.getElementById('listaOggi').style.display = schedaCorrente === 'oggi' ? 'block' : 'none';
+      document.getElementById('listaGiacenze').style.display = schedaCorrente === 'magazzino' ? 'block' : 'none';
+    });
+  });
 
   function caricaProdottiOggi() {
     if (!codiceAzienda || bloccoAzienda) return;
     var contenitore = document.getElementById('listaOggi');
-    contenitore.innerHTML = '<div class="lista-vuota">Caricamento...</div>';
     chiamaServer('elencoProdottiOggi', { codice: codiceAzienda }).then(function (d) {
       if (d.bloccato) { mostraBloccoAzienda(d.errore); return; }
       if (!d.successo || !d.prodotti || d.prodotti.length === 0) {
@@ -228,12 +295,9 @@
     });
   }
 
-  // ---------------- LISTA "GIÀ IN MAGAZZINO" ----------------
-
   function caricaGiacenzeAzienda() {
     if (!codiceAzienda || bloccoAzienda) return;
     var contenitore = document.getElementById('listaGiacenze');
-    contenitore.innerHTML = '<div class="lista-vuota">Caricamento...</div>';
     chiamaServer('elencoGiacenzeAzienda', { codice: codiceAzienda }).then(function (d) {
       if (d.bloccato) { mostraBloccoAzienda(d.errore); return; }
       if (!d.successo || !d.prodotti || d.prodotti.length === 0) {
@@ -251,16 +315,33 @@
     });
   }
 
-  document.getElementById('btnRicaricaOggi').addEventListener('click', caricaProdottiOggi);
-  document.getElementById('btnRicaricaGiacenze').addEventListener('click', caricaGiacenzeAzienda);
+  // Aggiorna entrambe le liste insieme (usate dal pulsante di ricarica
+  // manuale e dall'aggiornamento automatico ogni minuto) e aggiorna
+  // l'orario mostrato.
+  function aggiornaListe() {
+    if (bloccoAzienda) return;
+    caricaProdottiOggi();
+    caricaGiacenzeAzienda();
+    document.getElementById('testoAggiornato').textContent =
+      'Aggiornato alle ' + new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  document.getElementById('btnRicarica').addEventListener('click', aggiornaListe);
+
+  function avviaAggiornamentoPeriodico() {
+    aggiornaListe();
+    if (intervalloAggiornamento) clearInterval(intervalloAggiornamento);
+    intervalloAggiornamento = setInterval(aggiornaListe, INTERVALLO_AGGIORNAMENTO_MS);
+  }
 
   // ---------------- AVVIO ----------------
 
   if (codiceAzienda) {
     mostraOverlayCodice(false);
-    caricaProdottiOggi();
-    caricaGiacenzeAzienda();
+    avviaAggiornamentoPeriodico();
   } else {
     mostraOverlayCodice(true);
   }
+
+  renderBatch();
 })();
