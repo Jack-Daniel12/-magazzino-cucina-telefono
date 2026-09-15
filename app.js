@@ -110,7 +110,7 @@
     document.getElementById('btnAggiungi').disabled = true;
   }
 
-  // ---------------- SCHERMATA CODICE AZIENDA (una tantum) ----------------
+  // ---------------- SCHERMATA CODICE AZIENDA ----------------
 
   function mostraOverlayCodice(mostra) {
     var overlay = document.getElementById('overlayCodice');
@@ -140,9 +140,23 @@
         esito.innerHTML = ICONA_ERR + (d.errore || 'Codice non valido.');
         return;
       }
+
+      // Se stiamo CAMBIANDO azienda (non la primissima configurazione),
+      // ripuliamo tutto quello che apparteneva all'azienda precedente:
+      // non avrebbe senso inviare un prodotto pensato per un'altra
+      // azienda, o continuare a vedere le sue liste.
+      if (codiceAzienda && codiceAzienda !== valore) {
+        batch = [];
+        bloccoAzienda = false;
+        var banner = document.getElementById('bannerBloccoAzienda');
+        if (banner) banner.remove();
+        renderBatch();
+      }
+
       codiceAzienda = valore;
       localStorage.setItem('codiceAzienda', valore);
       document.getElementById('sottotitoloAzienda').textContent = d.cliente || 'Magazzino Cucina';
+      document.getElementById('inputCodice').value = '';
       mostraOverlayCodice(false);
       avviaAggiornamentoPeriodico();
     } catch (e) {
@@ -152,6 +166,29 @@
       rimuoviCaricamento(btn);
     }
   }
+
+  // "Cambia azienda": riapre la stessa schermata usata la prima volta,
+  // ma con un pulsante Annulla in più (qui c'è sempre qualcosa da cui
+  // tornare indietro, a differenza della primissima configurazione).
+  document.getElementById('btnCambiaAzienda').addEventListener('click', function () {
+    if (batch.length > 0) {
+      var conferma = window.confirm(
+        'Hai ' + batch.length + (batch.length === 1 ? ' prodotto' : ' prodotti') +
+        ' non ancora inviato. Cambiando azienda andrà perso. Continuare?'
+      );
+      if (!conferma) return;
+    }
+    document.getElementById('inputCodice').value = '';
+    document.getElementById('esitoCodice').className = 'esito';
+    document.getElementById('esitoCodice').innerHTML = '';
+    document.getElementById('btnAnnullaCodice').style.display = '';
+    mostraOverlayCodice(true);
+    document.getElementById('inputCodice').focus();
+  });
+
+  document.getElementById('btnAnnullaCodice').addEventListener('click', function () {
+    mostraOverlayCodice(false);
+  });
 
   document.getElementById('btnConfermaCodice').addEventListener('click', confermaCodice);
   document.getElementById('inputCodice').addEventListener('keydown', function (e) {
