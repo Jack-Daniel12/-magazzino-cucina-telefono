@@ -1,9 +1,7 @@
-/* Stile della pagina "Nuovo Prodotto" — identico a quello che girava
-   dentro Apps Script (variabile CSS_PAGINA), solo riformattato come CSS
-   normale e leggibile invece che come stringa JS concatenata.
-   Nessuna dimensione o proporzione è stata cambiata in questa fase:
-   le modifiche di dimensionamento arriveranno dopo aver chiarito con te
-   cosa esattamente non va (vedi README-pubblicazione.md). */
+/* Stile della pagina "Nuovo Prodotto" — riorganizzato in "schede" (card)
+   con una gerarchia chiara tra azione secondaria ("Aggiungi alla lista",
+   ripetuta spesso) e azione principale ("Invia tutti", il momento che
+   conta davvero). */
 
 * {
   box-sizing: border-box;
@@ -24,14 +22,16 @@ body {
   flex-direction: column;
 }
 
-h1 {
+h1, h2 {
   font-family: "Source Serif 4", Georgia, serif;
 }
+
+/* ---------------- HEADER ---------------- */
 
 .header {
   background: linear-gradient(180deg, #262C2F, #1A1F22);
   color: #F5F3EE;
-  padding: 26px 24px 22px 24px;
+  padding: 22px 20px 18px 20px;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -39,55 +39,73 @@ h1 {
 }
 
 .header img {
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   border-radius: 10px;
   flex-shrink: 0;
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
 }
 
 .header h1 {
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 600;
   margin: 0;
   color: #F7F5F0;
 }
 
 .header .sotto {
-  font-size: 12.5px;
+  font-size: 12px;
   color: #A8A199;
   margin-top: 2px;
 }
 
+/* ---------------- CONTENUTO / CARD ---------------- */
+
 .contenuto {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 32px 24px;
+  padding: 16px 16px 40px 16px;
   width: 100%;
   max-width: 480px;
   margin: 0 auto;
 }
 
+.card {
+  background: #FFFFFF;
+  border: 1px solid #E3DFD4;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.card-titolo {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #716B61;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 12px;
+}
+
+/* ---------------- CAMPI MODULO ---------------- */
+
 .campo {
-  margin-bottom: 18px;
+  margin-bottom: 12px;
 }
 
 .campo label {
   display: block;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   color: #716B61;
-  margin-bottom: 7px;
+  margin-bottom: 5px;
 }
 
 .campo input {
   width: 100%;
-  padding: 16px 16px;
-  font-size: 17px;
+  padding: 12px 14px;
+  font-size: 15.5px;
   border: 1.5px solid #E3DFD4;
-  border-radius: 12px;
+  border-radius: 10px;
   background: #FFFFFF;
   color: #25221E;
   font-family: inherit;
@@ -101,50 +119,226 @@ h1 {
 .riga2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  gap: 10px;
 }
 
-.btn-invia {
+/* ---------------- PULSANTI, GERARCHIA CHIARA ---------------- */
+
+.btn-secondario {
   width: 100%;
-  padding: 18px;
-  border: none;
-  border-radius: 12px;
-  background: linear-gradient(180deg, #C1904E, #A8763A);
-  color: #FBF7EF;
-  font-size: 16.5px;
+  padding: 13px;
+  border: 1.5px solid #B8843E;
+  border-radius: 10px;
+  background: transparent;
+  color: #8F672E;
+  font-size: 14.5px;
   font-weight: 700;
   font-family: inherit;
-  margin-top: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 9px;
-  box-shadow: 0 4px 14px rgba(184, 132, 62, 0.35);
+  gap: 8px;
 }
 
-.btn-invia:active {
-  filter: brightness(0.94);
+.btn-secondario:active {
+  background: #F3E7D3;
 }
 
-.btn-invia svg {
-  width: 19px;
-  height: 19px;
+.btn-primario {
+  width: 100%;
+  padding: 15px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #C1904E, #8F672E);
+  color: #FBF7EF;
+  font-size: 15.5px;
+  font-weight: 700;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 14px rgba(184, 132, 62, 0.3);
 }
+
+.btn-primario:disabled {
+  opacity: 0.4;
+  box-shadow: none;
+}
+
+.btn-secondario.in-corso,
+.btn-primario.in-corso {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* ---------------- LISTA "DA INVIARE" ---------------- */
+
+.riga-batch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #F0EDE4;
+}
+
+.riga-batch:last-of-type {
+  border-bottom: none;
+}
+
+.riga-batch .info {
+  flex: 1;
+  min-width: 0;
+}
+
+.riga-batch .nome {
+  font-weight: 600;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.riga-batch .dettaglio {
+  font-size: 12.5px;
+  color: #716B61;
+  margin-top: 1px;
+}
+
+.riga-batch .rimuovi {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: #F7E5E1;
+  color: #AD4C3C;
+  font-size: 14px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.batch-vuoto {
+  font-size: 13px;
+  color: #716B61;
+  text-align: center;
+  padding: 6px 0;
+}
+
+/* ---------------- SCHEDE OGGI / MAGAZZINO ---------------- */
+
+.schede {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.scheda-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 9px;
+  border: 1.5px solid #E3DFD4;
+  background: #FFFFFF;
+  color: #716B61;
+  font-size: 13.5px;
+  font-weight: 600;
+  font-family: inherit;
+}
+
+.scheda-btn.selezionata {
+  background: #1A1F22;
+  border-color: #1A1F22;
+  color: #F7F5F0;
+}
+
+.lista-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.lista-header .aggiornato {
+  font-size: 11.5px;
+  color: #716B61;
+}
+
+.btn-ricarica {
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #B8843E;
+  padding: 2px 6px;
+}
+
+.riga-elenco {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #F0EDE4;
+  font-size: 14px;
+}
+
+.riga-elenco:last-child {
+  border-bottom: none;
+}
+
+.riga-elenco .nome-prodotto {
+  font-weight: 600;
+  color: #25221E;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.riga-elenco .dettaglio-prodotto {
+  color: #716B61;
+  font-size: 12.5px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.riga-elenco.stato-rifiutato .nome-prodotto {
+  text-decoration: line-through;
+  color: #A8A199;
+}
+
+.riga-elenco.stato-importato .dettaglio-prodotto {
+  color: #3D5439;
+}
+
+.lista-vuota {
+  padding: 14px 0;
+  font-size: 13px;
+  color: #716B61;
+  text-align: center;
+}
+
+/* ---------------- ESITI / MESSAGGI ---------------- */
 
 .esito {
-  margin-top: 18px;
-  padding: 14px 16px;
-  border-radius: 11px;
-  font-size: 14.5px;
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 13.5px;
   display: none;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
   font-weight: 500;
 }
 
 .esito svg {
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
   flex-shrink: 0;
 }
 
@@ -160,7 +354,7 @@ h1 {
   color: #7A3327;
 }
 
-/* ---- Schermata "codice azienda" (mostrata una tantum) ---- */
+/* ---------------- SCHERMATA "CODICE AZIENDA" (una tantum) ---------------- */
 
 .overlay-codice {
   position: fixed;
@@ -226,88 +420,7 @@ h1 {
   border-color: #B8843E;
 }
 
-/* ---- Liste scorrevoli (inseriti oggi / già in magazzino) ---- */
-
-.sezione-elenco {
-  margin-top: 26px;
-}
-
-.sezione-titolo {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 13px;
-  font-weight: 700;
-  color: #716B61;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  margin-bottom: 8px;
-}
-
-.btn-ricarica {
-  background: none;
-  border: none;
-  font-size: 17px;
-  color: #B8843E;
-  padding: 4px 8px;
-  cursor: pointer;
-  line-height: 1;
-}
-
-.lista-scorrevole {
-  max-height: 200px;
-  overflow-y: auto;
-  background: #FFFFFF;
-  border: 1.5px solid #E3DFD4;
-  border-radius: 12px;
-}
-
-.lista-vuota {
-  padding: 16px;
-  font-size: 13.5px;
-  color: #A8A199;
-  text-align: center;
-}
-
-.riga-elenco {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 10px;
-  padding: 11px 14px;
-  border-bottom: 1px solid #F0EDE4;
-  font-size: 14px;
-}
-
-.riga-elenco:last-child {
-  border-bottom: none;
-}
-
-.riga-elenco .nome-prodotto {
-  font-weight: 600;
-  color: #25221E;
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.riga-elenco .dettaglio-prodotto {
-  color: #716B61;
-  font-size: 12.5px;
-  flex-shrink: 0;
-  text-align: right;
-}
-
-.riga-elenco.stato-rifiutato .nome-prodotto {
-  text-decoration: line-through;
-  color: #A8A199;
-}
-
-.riga-elenco.stato-importato .dettaglio-prodotto {
-  color: #3D5439;
-}
+/* ---------------- BANNER DI BLOCCO AZIENDA ---------------- */
 
 .banner-blocco {
   background: #F7E5E1;
@@ -319,22 +432,11 @@ h1 {
   display: flex;
   align-items: center;
   gap: 9px;
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 
 .banner-blocco svg {
   width: 19px;
   height: 19px;
   flex-shrink: 0;
-}
-
-/* ---- Feedback "azione in corso" ---- */
-
-.btn-invia.in-corso {
-  opacity: 0.7;
-  cursor: wait;
-}
-
-button:disabled {
-  cursor: not-allowed;
 }
