@@ -28,13 +28,18 @@
       <p>Inserisci il codice fornito dal tuo responsabile per collegare questo telefono all'azienda giusta. Va fatto una sola volta.</p>
       <input type="text" id="inputCodice" placeholder="es. MC-XXXX-XXXX" autocapitalize="characters">
       <button class="btn-primario" id="btnConfermaCodice">Conferma</button>
+      <button class="btn-secondario" id="btnAnnullaCodice" style="display:none;margin-top:8px">Annulla</button>
       <div class="esito" id="esitoCodice"></div>
     </div>
   </div>
 
   <div class="header">
     <img src="icon-192.png" alt="">
-    <div><h1>Nuovo Prodotto</h1><div class="sotto" id="sottotitoloAzienda">Magazzino Cucina</div></div>
+    <div style="flex:1;min-width:0">
+      <h1>Nuovo Prodotto</h1>
+      <div class="sotto" id="sottotitoloAzienda">Magazzino Cucina</div>
+    </div>
+    <button id="btnCambiaAzienda" title="Cambia azienda" style="background:none;border:1px solid #454C50;border-radius:8px;color:#A8A199;font-size:11.5px;padding:6px 10px;align-self:flex-start;flex-shrink:0">Cambia</button>
   </div>
 
   <div class="contenuto">
