@@ -327,3 +327,14 @@ h1 {
   height: 19px;
   flex-shrink: 0;
 }
+
+/* ---- Feedback "azione in corso" ---- */
+
+.btn-invia.in-corso {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
