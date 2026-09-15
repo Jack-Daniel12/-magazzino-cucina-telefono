@@ -12,9 +12,24 @@
     return id;
   }
 
-  function chiamaServer(azione, corpo) {
+  // ---------------- CHIAMATA AL SERVER, CON RIPROVA AUTOMATICO ----------------
+  // Stessa logica già usata nel programma PC e nel pannello di
+  // amministrazione: fino a 4 tentativi in background, con una pausa
+  // crescente, prima di arrendersi — Apps Script può metterci qualche
+  // secondo a "svegliarsi" se non viene chiamato da un po'.
+  var TENTATIVI_MASSIMI = 4;
+  var TIMEOUT_MS = 15000;
+
+  function attesa(ms) {
+    return new Promise(function (resolve) { setTimeout(resolve, ms); });
+  }
+
+  function chiamaServerUnaVolta(azione, corpo) {
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, TIMEOUT_MS);
     return fetch(URL_SCRIPT + '?azione=' + encodeURIComponent(azione), {
       method: 'POST',
+      signal: controller.signal,
       // Content-Type "text/plain" (non "application/json") per evitare la
       // richiesta preflight OPTIONS, che Apps Script gestisce male: pagina
       // e Apps Script vivono su domini diversi, quindi è una richiesta
@@ -22,7 +37,38 @@
       // usare application/json.
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(corpo || {})
-    }).then(function (r) { return r.json(); });
+    }).then(function (r) {
+      if (!r.ok) throw new Error('Il server ha risposto con errore HTTP ' + r.status);
+      return r.json();
+    }).finally(function () {
+      clearTimeout(timer);
+    });
+  }
+
+  async function chiamaServer(azione, corpo) {
+    var ultimoErrore;
+    for (var tentativo = 1; tentativo <= TENTATIVI_MASSIMI; tentativo++) {
+      try {
+        return await chiamaServerUnaVolta(azione, corpo);
+      } catch (err) {
+        ultimoErrore = err;
+        if (tentativo < TENTATIVI_MASSIMI) await attesa(700 * tentativo);
+      }
+    }
+    throw ultimoErrore;
+  }
+
+  // ---------------- FEEDBACK VISIVO "IN CORSO" ----------------
+  function impostaCaricamento(bottone, testoInCorso) {
+    if (!bottone.dataset.testoOriginale) bottone.dataset.testoOriginale = bottone.innerHTML;
+    bottone.innerHTML = testoInCorso;
+    bottone.disabled = true;
+    bottone.classList.add('in-corso');
+  }
+  function rimuoviCaricamento(bottone) {
+    if (bottone.dataset.testoOriginale) bottone.innerHTML = bottone.dataset.testoOriginale;
+    bottone.disabled = false;
+    bottone.classList.remove('in-corso');
   }
 
   var idDispositivo = ottieniIdDispositivo();
@@ -68,7 +114,7 @@
     else overlay.classList.add('nascosto');
   }
 
-  function confermaCodice() {
+  async function confermaCodice() {
     var valore = document.getElementById('inputCodice').value.trim();
     var esito = document.getElementById('esitoCodice');
     esito.className = 'esito';
@@ -80,7 +126,11 @@
       return;
     }
 
-    chiamaServer('verificaCodiceTelefono', { codice: valore }).then(function (d) {
+    var btn = document.getElementById('btnConfermaCodice');
+    impostaCaricamento(btn, 'Verifica...');
+
+    try {
+      var d = await chiamaServer('verificaCodiceTelefono', { codice: valore });
       if (!d.successo) {
         esito.className = 'esito errore';
         esito.innerHTML = ICONA_ERR + (d.errore || 'Codice non valido.');
@@ -92,10 +142,12 @@
       mostraOverlayCodice(false);
       caricaProdottiOggi();
       caricaGiacenzeAzienda();
-    }).catch(function () {
+    } catch (e) {
       esito.className = 'esito errore';
-      esito.innerHTML = ICONA_ERR + 'Impossibile contattare il server. Controlla la connessione.';
-    });
+      esito.innerHTML = ICONA_ERR + 'Impossibile contattare il server. Controlla la connessione e riprova.';
+    } finally {
+      rimuoviCaricamento(btn);
+    }
   }
 
   document.getElementById('btnConfermaCodice').addEventListener('click', confermaCodice);
@@ -105,7 +157,7 @@
 
   // ---------------- INVIO NUOVO PRODOTTO ----------------
 
-  document.getElementById('btnInvia').addEventListener('click', function () {
+  document.getElementById('btnInvia').addEventListener('click', async function () {
     var nome = document.getElementById('nome').value.trim();
     var quantita = document.getElementById('quantita').value;
     var unita = document.getElementById('unita').value.trim();
@@ -121,10 +173,14 @@
       return;
     }
 
-    chiamaServer('nuovoProdotto', {
-      nome: nome, quantita: quantita, unitaMisura: unita, prezzoUnitario: prezzo || '',
-      nota: nota, idDispositivo: idDispositivo, codice: codiceAzienda
-    }).then(function (d) {
+    var btn = document.getElementById('btnInvia');
+    impostaCaricamento(btn, 'Invio in corso...');
+
+    try {
+      var d = await chiamaServer('nuovoProdotto', {
+        nome: nome, quantita: quantita, unitaMisura: unita, prezzoUnitario: prezzo || '',
+        nota: nota, idDispositivo: idDispositivo, codice: codiceAzienda
+      });
       if (d.successo) {
         esito.className = 'esito ok';
         esito.innerHTML = ICONA_OK + 'Prodotto inviato correttamente.';
@@ -140,10 +196,12 @@
         esito.className = 'esito errore';
         esito.innerHTML = ICONA_ERR + (d.errore || 'Errore di invio dei dati.');
       }
-    }).catch(function () {
+    } catch (e) {
       esito.className = 'esito errore';
-      esito.innerHTML = ICONA_ERR + 'Impossibile contattare il server. Controlla la connessione.';
-    });
+      esito.innerHTML = ICONA_ERR + 'Impossibile contattare il server dopo vari tentativi. Controlla la connessione e riprova.';
+    } finally {
+      rimuoviCaricamento(btn);
+    }
   });
 
   // ---------------- LISTA "INSERITI OGGI" ----------------
@@ -151,6 +209,7 @@
   function caricaProdottiOggi() {
     if (!codiceAzienda || bloccoAzienda) return;
     var contenitore = document.getElementById('listaOggi');
+    contenitore.innerHTML = '<div class="lista-vuota">Caricamento...</div>';
     chiamaServer('elencoProdottiOggi', { codice: codiceAzienda }).then(function (d) {
       if (d.bloccato) { mostraBloccoAzienda(d.errore); return; }
       if (!d.successo || !d.prodotti || d.prodotti.length === 0) {
@@ -165,7 +224,7 @@
           '</div>';
       }).join('');
     }).catch(function () {
-      contenitore.innerHTML = '<div class="lista-vuota">Impossibile caricare l\'elenco (controlla la connessione).</div>';
+      contenitore.innerHTML = '<div class="lista-vuota">Impossibile caricare l\'elenco dopo vari tentativi (controlla la connessione).</div>';
     });
   }
 
@@ -174,6 +233,7 @@
   function caricaGiacenzeAzienda() {
     if (!codiceAzienda || bloccoAzienda) return;
     var contenitore = document.getElementById('listaGiacenze');
+    contenitore.innerHTML = '<div class="lista-vuota">Caricamento...</div>';
     chiamaServer('elencoGiacenzeAzienda', { codice: codiceAzienda }).then(function (d) {
       if (d.bloccato) { mostraBloccoAzienda(d.errore); return; }
       if (!d.successo || !d.prodotti || d.prodotti.length === 0) {
@@ -187,7 +247,7 @@
           '</div>';
       }).join('');
     }).catch(function () {
-      contenitore.innerHTML = '<div class="lista-vuota">Impossibile caricare l\'elenco (controlla la connessione).</div>';
+      contenitore.innerHTML = '<div class="lista-vuota">Impossibile caricare l\'elenco dopo vari tentativi (controlla la connessione).</div>';
     });
   }
 
