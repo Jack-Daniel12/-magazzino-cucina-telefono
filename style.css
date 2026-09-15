@@ -159,3 +159,171 @@ h1 {
   background: #F7E5E1;
   color: #7A3327;
 }
+
+/* ---- Schermata "codice azienda" (mostrata una tantum) ---- */
+
+.overlay-codice {
+  position: fixed;
+  inset: 0;
+  background: #1A1F22;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 50;
+}
+
+.overlay-codice.nascosto {
+  display: none;
+}
+
+.overlay-codice-box {
+  background: #FFFFFF;
+  border-radius: 16px;
+  padding: 28px 24px;
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+}
+
+.overlay-codice-box img {
+  width: 46px;
+  height: 46px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+
+.overlay-codice-box h2 {
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: 19px;
+  margin: 0 0 8px 0;
+  color: #25221E;
+}
+
+.overlay-codice-box p {
+  font-size: 13.5px;
+  color: #716B61;
+  line-height: 1.5;
+  margin: 0 0 18px 0;
+}
+
+.overlay-codice-box input {
+  width: 100%;
+  padding: 14px 16px;
+  font-size: 16px;
+  text-align: center;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border: 1.5px solid #E3DFD4;
+  border-radius: 12px;
+  margin-bottom: 14px;
+  font-family: inherit;
+}
+
+.overlay-codice-box input:focus {
+  outline: none;
+  border-color: #B8843E;
+}
+
+/* ---- Liste scorrevoli (inseriti oggi / già in magazzino) ---- */
+
+.sezione-elenco {
+  margin-top: 26px;
+}
+
+.sezione-titolo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 700;
+  color: #716B61;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 8px;
+}
+
+.btn-ricarica {
+  background: none;
+  border: none;
+  font-size: 17px;
+  color: #B8843E;
+  padding: 4px 8px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.lista-scorrevole {
+  max-height: 200px;
+  overflow-y: auto;
+  background: #FFFFFF;
+  border: 1.5px solid #E3DFD4;
+  border-radius: 12px;
+}
+
+.lista-vuota {
+  padding: 16px;
+  font-size: 13.5px;
+  color: #A8A199;
+  text-align: center;
+}
+
+.riga-elenco {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  padding: 11px 14px;
+  border-bottom: 1px solid #F0EDE4;
+  font-size: 14px;
+}
+
+.riga-elenco:last-child {
+  border-bottom: none;
+}
+
+.riga-elenco .nome-prodotto {
+  font-weight: 600;
+  color: #25221E;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.riga-elenco .dettaglio-prodotto {
+  color: #716B61;
+  font-size: 12.5px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.riga-elenco.stato-rifiutato .nome-prodotto {
+  text-decoration: line-through;
+  color: #A8A199;
+}
+
+.riga-elenco.stato-importato .dettaglio-prodotto {
+  color: #3D5439;
+}
+
+.banner-blocco {
+  background: #F7E5E1;
+  color: #7A3327;
+  padding: 14px 16px;
+  border-radius: 11px;
+  font-size: 14px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 20px;
+}
+
+.banner-blocco svg {
+  width: 19px;
+  height: 19px;
+  flex-shrink: 0;
+}
