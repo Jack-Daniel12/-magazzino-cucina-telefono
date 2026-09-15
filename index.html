@@ -27,7 +27,7 @@
       <h2>Codice azienda</h2>
       <p>Inserisci il codice fornito dal tuo responsabile per collegare questo telefono all'azienda giusta. Va fatto una sola volta.</p>
       <input type="text" id="inputCodice" placeholder="es. MC-XXXX-XXXX" autocapitalize="characters">
-      <button class="btn-invia" id="btnConfermaCodice">Conferma</button>
+      <button class="btn-primario" id="btnConfermaCodice">Conferma</button>
       <div class="esito" id="esitoCodice"></div>
     </div>
   </div>
@@ -38,40 +38,52 @@
   </div>
 
   <div class="contenuto">
-    <div class="campo"><label>Nome prodotto</label><input type="text" id="nome" placeholder="es. Farina 00 kg 25"></div>
-    <div class="riga2">
-      <div class="campo"><label>Quantità</label><input type="number" id="quantita" step="0.01" min="0" placeholder="0"></div>
-      <div class="campo"><label>Unità</label><input type="text" id="unita" placeholder="pz/kg/lt"></div>
-    </div>
-    <div class="campo"><label>Prezzo unitario (facoltativo)</label><input type="number" id="prezzo" step="0.01" min="0" placeholder="€ 0,00"></div>
-    <div class="campo"><label>Nota (opzionale)</label><input type="text" id="nota" placeholder="es. da Fornitore Rossi"></div>
-    <button class="btn-invia" id="btnInvia">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-      Invia
-    </button>
-    <div class="esito" id="esito"></div>
 
-    <!-- Sezione 1: cosa è stato inserito oggi, da tutta l'azienda -->
-    <div class="sezione-elenco">
-      <div class="sezione-titolo">
-        <span>Inseriti oggi</span>
-        <button class="btn-ricarica" id="btnRicaricaOggi" title="Aggiorna">⟳</button>
+    <!-- Modulo di aggiunta: compila e "Aggiungi alla lista", non invia
+         ancora nulla al server -->
+    <div class="card">
+      <div class="card-titolo">Aggiungi prodotto</div>
+      <div class="campo"><label>Nome prodotto</label><input type="text" id="nome" placeholder="es. Farina 00 kg 25"></div>
+      <div class="riga2">
+        <div class="campo"><label>Quantità</label><input type="number" id="quantita" step="0.01" min="0" placeholder="0"></div>
+        <div class="campo"><label>Unità</label><input type="text" id="unita" placeholder="pz/kg/lt"></div>
       </div>
-      <div class="lista-scorrevole" id="listaOggi">
-        <div class="lista-vuota">Ancora nessun prodotto inserito oggi.</div>
-      </div>
+      <div class="campo"><label>Prezzo unitario (facoltativo)</label><input type="number" id="prezzo" step="0.01" min="0" placeholder="€ 0,00"></div>
+      <div class="campo" style="margin-bottom:4px"><label>Nota (opzionale)</label><input type="text" id="nota" placeholder="es. da Fornitore Rossi"></div>
+      <button class="btn-secondario" id="btnAggiungi">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Aggiungi alla lista
+      </button>
+      <div class="esito" id="esitoAggiungi"></div>
     </div>
 
-    <!-- Sezione 2: cosa c'è già in magazzino, per coordinarsi -->
-    <div class="sezione-elenco">
-      <div class="sezione-titolo">
-        <span>Già in magazzino</span>
-        <button class="btn-ricarica" id="btnRicaricaGiacenze" title="Aggiorna">⟳</button>
-      </div>
-      <div class="lista-scorrevole" id="listaGiacenze">
-        <div class="lista-vuota">Nessun dato disponibile ancora.</div>
-      </div>
+    <!-- Elenco di quello che sta per essere inviato, non ancora mandato -->
+    <div class="card">
+      <div class="card-titolo"><span id="titoloBatch">Da inviare</span></div>
+      <div id="listaBatch"><div class="batch-vuoto">Ancora nessun prodotto aggiunto.</div></div>
+      <button class="btn-primario" id="btnInviaTutti" disabled style="margin-top:10px">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        <span id="testoBtnInvia">Invia tutti</span>
+      </button>
+      <div class="esito" id="esitoInvio"></div>
     </div>
+
+    <!-- Schede per passare da "cosa è stato inserito oggi" a "cosa c'è già
+         in magazzino", senza dover scorrere due liste sempre aperte -->
+    <div class="schede">
+      <button class="scheda-btn selezionata" data-scheda="oggi">Oggi</button>
+      <button class="scheda-btn" data-scheda="magazzino">Magazzino</button>
+    </div>
+
+    <div class="card">
+      <div class="lista-header">
+        <span class="aggiornato" id="testoAggiornato">—</span>
+        <button class="btn-ricarica" id="btnRicarica" title="Aggiorna">⟳</button>
+      </div>
+      <div id="listaOggi"><div class="lista-vuota">Ancora nessun prodotto inserito oggi.</div></div>
+      <div id="listaGiacenze" style="display:none"><div class="lista-vuota">Nessun dato disponibile ancora.</div></div>
+    </div>
+
   </div>
 
   <script src="config.js"></script>
