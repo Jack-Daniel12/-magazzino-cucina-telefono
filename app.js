@@ -74,8 +74,34 @@
   var codiceAzienda = localStorage.getItem('codiceAzienda') || '';
   var bloccoAzienda = false;
   var batch = [];
+  var modoCorrente = 'entrata';
+  var prodottiMagazzinoConosciuti = []; // nomi, per il suggerimento e il controllo leggero sulle uscite
   var schedaCorrente = 'oggi';
   var intervalloAggiornamento = null;
+
+  // ---------------- SELETTORE ENTRATA / USCITA ----------------
+
+  function impostaModo(modo) {
+    modoCorrente = modo;
+    var eUscita = modo === 'uscita';
+
+    document.getElementById('btnModoEntrata').classList.toggle('selezionata', !eUscita);
+    document.getElementById('btnModoUscita').classList.toggle('selezionata', eUscita);
+    // (nota: uso id diretti sopra, non querySelectorAll('.modo-btn'),
+    // proprio per non rischiare di intrecciarsi in futuro con altri
+    // selettori a schede della pagina — vedi il bug già preso e corretto
+    // una volta con la classe .scheda-btn condivisa)
+
+    document.getElementById('labelNome').textContent = eUscita ? 'Prodotto già in magazzino' : 'Nome prodotto';
+    document.getElementById('nome').placeholder = eUscita ? 'Scrivi il nome esatto...' : 'es. Farina 00 kg 25';
+    document.getElementById('spiegaNomeUscita').style.display = eUscita ? 'block' : 'none';
+    document.getElementById('campoUnita').style.display = eUscita ? 'none' : '';
+    document.getElementById('campoPrezzo').style.display = eUscita ? 'none' : '';
+    document.getElementById('testoBtnAggiungi').textContent = eUscita ? 'Segnala uscita' : 'Aggiungi alla lista';
+  }
+
+  document.getElementById('btnModoEntrata').addEventListener('click', function () { impostaModo('entrata'); });
+  document.getElementById('btnModoUscita').addEventListener('click', function () { impostaModo('uscita'); });
 
   function escapeHtml(testo) {
     var div = document.createElement('div');
@@ -214,8 +240,10 @@
       return;
     }
     el.innerHTML = batch.map(function (p, i) {
+      var eUscita = p.tipo === 'uscita';
       var dettagli = escapeHtml(p.quantita) + ' ' + escapeHtml(p.unitaMisura || '') + (p.prezzoUnitario ? ' · € ' + escapeHtml(p.prezzoUnitario) : '');
       return '<div class="riga-batch">' +
+        '<span class="tag-mini ' + (eUscita ? 'out' : 'in') + '">' + (eUscita ? '↑' : '↓') + '</span>' +
         '<div class="info"><div class="nome">' + escapeHtml(p.nome) + '</div><div class="dettaglio">' + dettagli + '</div></div>' +
         '<button class="rimuovi" data-rimuovi="' + i + '" ' + (bloccoAzienda ? 'disabled' : '') + '>✕</button>' +
         '</div>';
@@ -241,11 +269,29 @@
       return;
     }
 
+    var eUscita = modoCorrente === 'uscita';
+
+    // Controllo leggero (non blocca l'invio): un'uscita deve riferirsi a
+    // un prodotto che il telefono ha già visto nella scheda Magazzino.
+    // Il controllo vero e definitivo lo fa comunque il programma PC al
+    // momento della conferma, questo è solo per avvisare subito se il
+    // nome sembra scritto in modo diverso da come risulta a magazzino.
+    if (eUscita && prodottiMagazzinoConosciuti.length > 0) {
+      var trovato = prodottiMagazzinoConosciuti.some(function (n) { return n.toLowerCase() === nome.toLowerCase(); });
+      if (!trovato) {
+        esito.className = 'esito errore';
+        esito.innerHTML = ICONA_ERR + 'Non trovo un prodotto con questo nome esatto in magazzino. Controlla la scheda "Magazzino" qui sotto, o aggiungilo comunque se sei sicuro.';
+        // Non blocchiamo: l'utente può comunque proseguire cliccando di
+        // nuovo (il messaggio resta visibile finché non aggiunge altro).
+      }
+    }
+
     batch.push({
       nome: nome,
+      tipo: eUscita ? 'uscita' : 'entrata',
       quantita: quantita,
-      unitaMisura: document.getElementById('unita').value.trim(),
-      prezzoUnitario: document.getElementById('prezzo').value,
+      unitaMisura: eUscita ? '' : document.getElementById('unita').value.trim(),
+      prezzoUnitario: eUscita ? '' : document.getElementById('prezzo').value,
       nota: document.getElementById('nota').value.trim()
     });
 
@@ -275,7 +321,11 @@
         idDispositivo: idDispositivo,
         codice: codiceAzienda,
         prodotti: batch.map(function (p) {
-          return { nome: p.nome, quantita: p.quantita, unitaMisura: p.unitaMisura, prezzoUnitario: p.prezzoUnitario || '', nota: p.nota };
+          return {
+            nome: p.nome, quantita: p.quantita, unitaMisura: p.unitaMisura,
+            prezzoUnitario: p.prezzoUnitario || '', nota: p.nota,
+            tipo: p.tipo === 'uscita' ? 'scarico' : 'carico'
+          };
         })
       });
 
@@ -322,7 +372,9 @@
       }
       contenitore.innerHTML = d.prodotti.map(function (p) {
         var etichettaStato = p.stato === 'rifiutato' ? ' (scartato)' : (p.stato === 'importato' ? ' ✓' : '');
+        var eUscita = p.tipo === 'scarico';
         return '<div class="riga-elenco stato-' + escapeHtml(p.stato) + '">' +
+          '<span class="tag-mini ' + (eUscita ? 'out' : 'in') + '">' + (eUscita ? '↑' : '↓') + '</span>' +
           '<span class="nome-prodotto">' + escapeHtml(p.nome) + '</span>' +
           '<span class="dettaglio-prodotto">' + escapeHtml(p.quantita) + ' ' + escapeHtml(p.unitaMisura || '') + ' · ' + formattaOra(p.timestamp) + etichettaStato + '</span>' +
           '</div>';
@@ -332,6 +384,13 @@
     });
   }
 
+  function aggiornaSuggerimentiProdotti() {
+    var datalist = document.getElementById('listaProdottiMagazzino');
+    datalist.innerHTML = prodottiMagazzinoConosciuti.map(function (nome) {
+      return '<option value="' + escapeHtml(nome) + '"></option>';
+    }).join('');
+  }
+
   function caricaGiacenzeAzienda() {
     if (!codiceAzienda || bloccoAzienda) return;
     var contenitore = document.getElementById('listaGiacenze');
@@ -339,8 +398,12 @@
       if (d.bloccato) { mostraBloccoAzienda(d.errore); return; }
       if (!d.successo || !d.prodotti || d.prodotti.length === 0) {
         contenitore.innerHTML = '<div class="lista-vuota">Nessun dato disponibile ancora.</div>';
+        prodottiMagazzinoConosciuti = [];
+        aggiornaSuggerimentiProdotti();
         return;
       }
+      prodottiMagazzinoConosciuti = d.prodotti.map(function (p) { return p.nome; });
+      aggiornaSuggerimentiProdotti();
       contenitore.innerHTML = d.prodotti.map(function (p) {
         return '<div class="riga-elenco">' +
           '<span class="nome-prodotto">' + escapeHtml(p.nome) + '</span>' +
