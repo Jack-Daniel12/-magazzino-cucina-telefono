@@ -503,3 +503,40 @@ button:disabled {
   height: 19px;
   flex-shrink: 0;
 }
+
+/* ---- Schermata di caricamento a tutto schermo (solo "Invia tutti") ---- */
+
+.overlay-caricamento {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 31, 34, 0.72);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  z-index: 500;
+}
+
+.overlay-caricamento.hidden {
+  display: none;
+}
+
+.spinner {
+  width: 38px;
+  height: 38px;
+  border: 3.5px solid rgba(247, 245, 240, 0.25);
+  border-top-color: #F7F5F0;
+  border-radius: 50%;
+  animation: ruotaSpinnerMobile 0.75s linear infinite;
+}
+
+@keyframes ruotaSpinnerMobile {
+  to { transform: rotate(360deg); }
+}
+
+.overlay-caricamento-testo {
+  color: #F7F5F0;
+  font-size: 14px;
+  font-weight: 500;
+}
