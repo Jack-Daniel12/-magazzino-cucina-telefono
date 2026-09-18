@@ -70,6 +70,14 @@
     bottone.classList.remove('in-corso');
   }
 
+  function mostraOverlayCaricamento(testo) {
+    document.getElementById('overlayCaricamentoTesto').textContent = testo || 'Attendere...';
+    document.getElementById('overlayCaricamento').classList.remove('hidden');
+  }
+  function nascondiOverlayCaricamento() {
+    document.getElementById('overlayCaricamento').classList.add('hidden');
+  }
+
   var idDispositivo = ottieniIdDispositivo();
   var codiceAzienda = localStorage.getItem('codiceAzienda') || '';
   var bloccoAzienda = false;
@@ -315,6 +323,7 @@
     testoBtn.textContent = 'Invio in corso...';
     btn.disabled = true;
     btn.classList.add('in-corso');
+    mostraOverlayCaricamento('Invio in corso...');
 
     try {
       var d = await chiamaServer('nuoviProdottiMultipli', {
@@ -345,6 +354,7 @@
       esito.innerHTML = ICONA_ERR + 'Impossibile contattare il server dopo vari tentativi. Controlla la connessione e riprova.';
     } finally {
       btn.classList.remove('in-corso');
+      nascondiOverlayCaricamento();
       renderBatch(); // ripristina il testo/stato corretto del pulsante (Invia tutti (N) o disabilitato)
     }
   });
