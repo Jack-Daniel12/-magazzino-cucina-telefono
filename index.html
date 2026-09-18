@@ -102,6 +102,14 @@
 
   </div>
 
+  <!-- Schermata di caricamento a tutto schermo, mostrata solo mentre
+       "Invia tutti" è in corso: blocca ogni interazione con il resto
+       della pagina finché l'invio non è completato. -->
+  <div class="overlay-caricamento hidden" id="overlayCaricamento">
+    <div class="spinner"></div>
+    <div class="overlay-caricamento-testo" id="overlayCaricamentoTesto">Invio in corso...</div>
+  </div>
+
   <script src="config.js"></script>
   <script src="app.js"></script>
 </body>
