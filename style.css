@@ -230,13 +230,76 @@ button:disabled {
   padding: 6px 0;
 }
 
-/* ---------------- SCHEDE OGGI / MAGAZZINO ---------------- */
+/* ---------------- SELETTORE ENTRATA / USCITA ---------------- */
+
+.schede-modo {
+  display: flex;
+  gap: 6px;
+}
+
+.modo-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 9px;
+  border: 1.5px solid #E3DFD4;
+  background: #FFFFFF;
+  color: #716B61;
+  font-size: 13.5px;
+  font-weight: 600;
+  font-family: inherit;
+}
+
+.modo-btn.selezionata {
+  background: #1A1F22;
+  border-color: #1A1F22;
+  color: #F7F5F0;
+}
+
+.spiega-campo-mobile {
+  font-size: 11.5px;
+  color: #716B61;
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+.tag-mini {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.tag-mini.in {
+  background: #E7EEE3;
+  color: #5E7D5A;
+}
+
+.tag-mini.out {
+  background: #F3E7D3;
+  color: #8F672E;
+}
+
+.riga-batch .tag-mini {
+  margin-right: 2px;
+}
+
+.riga-elenco .tag-mini {
+  margin-right: 8px;
+}
+
 
 .schede {
   display: flex;
   gap: 6px;
   margin-bottom: 12px;
 }
+
+/* ---------------- SCHEDE OGGI / MAGAZZINO ---------------- */
 
 .scheda-btn {
   flex: 1;
