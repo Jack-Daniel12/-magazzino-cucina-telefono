@@ -56,9 +56,11 @@
 
       <div class="campo">
         <label id="labelNome">Nome prodotto</label>
-        <input type="text" id="nome" placeholder="es. Farina 00 kg 25" list="listaProdottiMagazzino">
-        <datalist id="listaProdottiMagazzino"></datalist>
-        <div class="spiega-campo-mobile" id="spiegaNomeUscita" style="display:none">Scrivi il nome esatto di un prodotto già presente in magazzino (scheda "Magazzino" qui sotto per controllare).</div>
+        <div class="autocomplete-wrapper">
+          <input type="text" id="nome" placeholder="es. Farina 00 kg 25" autocomplete="off">
+          <div class="autocomplete-lista" id="autocompleteLista"></div>
+        </div>
+        <div class="spiega-campo-mobile" id="spiegaNomeUscita" style="display:none">Scrivi il nome di un prodotto già presente in magazzino: appena inizi a scrivere, te lo suggerisco qui sotto.</div>
       </div>
       <div class="riga2">
         <div class="campo"><label>Quantità</label><input type="number" id="quantita" step="0.01" min="0" placeholder="0"></div>
