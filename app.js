@@ -104,6 +104,7 @@
     document.getElementById('nome').placeholder = eUscita ? 'Scrivi il nome esatto...' : 'es. Farina 00 kg 25';
     document.getElementById('spiegaNomeUscita').style.display = eUscita ? 'block' : 'none';
     document.getElementById('campoUnita').style.display = eUscita ? 'none' : '';
+    if (!eUscita) nascondiAutocomplete();
     document.getElementById('campoPrezzo').style.display = eUscita ? 'none' : '';
     document.getElementById('testoBtnAggiungi').textContent = eUscita ? 'Segnala uscita' : 'Aggiungi alla lista';
   }
@@ -394,12 +395,84 @@
     });
   }
 
-  function aggiornaSuggerimentiProdotti() {
-    var datalist = document.getElementById('listaProdottiMagazzino');
-    datalist.innerHTML = prodottiMagazzinoConosciuti.map(function (nome) {
-      return '<option value="' + escapeHtml(nome) + '"></option>';
-    }).join('');
+  // Mostra/aggiorna il menu a tendina con i prodotti che contengono il
+  // testo scritto finora (solo in modalità Uscita). Il testo cercato
+  // viene evidenziato in ogni voce, per farlo individuare a colpo d'occhio.
+  function mostraAutocomplete(testoRicerca) {
+    var lista = document.getElementById('autocompleteLista');
+    var testo = (testoRicerca || '').trim().toLowerCase();
+    var risultati = prodottiMagazzinoConosciuti.filter(function (nome) {
+      return !testo || nome.toLowerCase().indexOf(testo) !== -1;
+    }).slice(0, 12); // non più di 12 voci, per restare comodo su schermo piccolo
+
+    if (risultati.length === 0) {
+      lista.innerHTML = '<div class="autocomplete-vuoto">' +
+        (prodottiMagazzinoConosciuti.length === 0
+          ? 'Elenco magazzino non ancora disponibile, un momento...'
+          : 'Nessun prodotto trovato con questo nome.') +
+        '</div>';
+    } else {
+      lista.innerHTML = risultati.map(function (nome) {
+        return '<div class="autocomplete-voce" data-nome="' + escapeHtml(nome) + '">' + evidenziaTesto(nome, testo) + '</div>';
+      }).join('');
+    }
+    lista.classList.add('visibile');
   }
+
+  function nascondiAutocomplete() {
+    document.getElementById('autocompleteLista').classList.remove('visibile');
+  }
+
+  function evidenziaTesto(nome, testo) {
+    if (!testo) return escapeHtml(nome);
+    var indice = nome.toLowerCase().indexOf(testo);
+    if (indice === -1) return escapeHtml(nome);
+    return escapeHtml(nome.slice(0, indice)) +
+      '<mark>' + escapeHtml(nome.slice(indice, indice + testo.length)) + '</mark>' +
+      escapeHtml(nome.slice(indice + testo.length));
+  }
+
+  // Se il menu è aperto quando arrivano dati di magazzino più freschi
+  // (sincronizzazione ogni minuto), lo aggiorniamo subito, senza
+  // costringere l'utente a riscrivere per vedere i prodotti nuovi.
+  function aggiornaSuggerimentiProdotti() {
+    var lista = document.getElementById('autocompleteLista');
+    if (modoCorrente === 'uscita' && lista.classList.contains('visibile')) {
+      mostraAutocomplete(document.getElementById('nome').value);
+    }
+  }
+
+  var campoNome = document.getElementById('nome');
+
+  campoNome.addEventListener('input', function () {
+    if (modoCorrente !== 'uscita') return;
+    mostraAutocomplete(campoNome.value);
+  });
+
+  campoNome.addEventListener('focus', function () {
+    if (modoCorrente !== 'uscita') return;
+    mostraAutocomplete(campoNome.value);
+  });
+
+  campoNome.addEventListener('blur', function () {
+    // Piccolo ritardo: dà il tempo al tocco su una voce del menu di
+    // registrarsi prima che il menu sparisca. Controlliamo comunque,
+    // quando il timer scatta, che il campo non abbia RIPRESO il focus
+    // nel frattempo (es. l'utente è tornato a scriverci) — altrimenti un
+    // timer rimasto in sospeso da un blur precedente potrebbe nascondere
+    // il menu mentre l'utente lo sta ancora usando.
+    setTimeout(function () {
+      if (document.activeElement !== campoNome) nascondiAutocomplete();
+    }, 200);
+  });
+
+  document.getElementById('autocompleteLista').addEventListener('click', function (e) {
+    var voce = e.target.closest('.autocomplete-voce');
+    if (!voce || !voce.dataset.nome) return;
+    campoNome.value = voce.dataset.nome;
+    nascondiAutocomplete();
+    document.getElementById('quantita').focus();
+  });
 
   function caricaGiacenzeAzienda() {
     if (!codiceAzienda || bloccoAzienda) return;
