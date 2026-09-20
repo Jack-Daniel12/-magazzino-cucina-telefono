@@ -540,3 +540,58 @@ button:disabled {
   font-size: 14px;
   font-weight: 500;
 }
+
+/* ---------------- MENU A TENDINA PRODOTTI (solo uscite) ---------------- */
+
+.autocomplete-wrapper {
+  position: relative;
+}
+
+.autocomplete-lista {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #FFFFFF;
+  border: 1.5px solid #B8843E;
+  border-radius: 10px;
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 60;
+  box-shadow: 0 8px 20px rgba(26, 31, 34, 0.18);
+}
+
+.autocomplete-lista.visibile {
+  display: block;
+}
+
+.autocomplete-voce {
+  padding: 11px 14px;
+  font-size: 14.5px;
+  color: #25221E;
+  border-bottom: 1px solid #F0EDE5;
+  cursor: pointer;
+}
+
+.autocomplete-voce:last-child {
+  border-bottom: none;
+}
+
+.autocomplete-voce:active,
+.autocomplete-voce.evidenziata {
+  background: #F3E7D3;
+}
+
+.autocomplete-voce mark {
+  background: none;
+  color: #8F672E;
+  font-weight: 700;
+}
+
+.autocomplete-vuoto {
+  padding: 12px 14px;
+  font-size: 13.5px;
+  color: #A8A199;
+  font-style: italic;
+}
