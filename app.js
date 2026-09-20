@@ -143,6 +143,23 @@
     banner.innerHTML = ICONA_ERR + (motivo || 'Questa azienda risulta sospesa. Contatta il fornitore.');
     document.getElementById('btnInviaTutti').disabled = true;
     document.getElementById('btnAggiungi').disabled = true;
+    document.getElementById('btnRicarica').disabled = true;
+  }
+
+  // Annulla un blocco precedente (o non fa nulla se non eravamo bloccati:
+  // è sicuro chiamarla sempre). Serve perché una volta bloccati non c'era
+  // NESSUN modo di sbloccarsi senza ricaricare tutta la pagina — nemmeno
+  // riverificando con successo lo stesso codice, o passando a
+  // un'azienda diversa e valida: i pulsanti restavano disabilitati per
+  // sempre. Ora la richiamiamo su ogni verifica del codice riuscita.
+  function sbloccaAzienda() {
+    bloccoAzienda = false;
+    var banner = document.getElementById('bannerBloccoAzienda');
+    if (banner) banner.remove();
+    document.getElementById('btnAggiungi').disabled = false;
+    document.getElementById('btnRicarica').disabled = false;
+    // btnInviaTutti lo lascia decidere renderBatch() (resta disabilitato
+    // finché la lista "Da inviare" è vuota, che è corretto).
   }
 
   // ---------------- SCHERMATA CODICE AZIENDA ----------------
@@ -176,15 +193,17 @@
         return;
       }
 
+      // Sblocchiamo sempre a questo punto: la verifica è appena andata a
+      // buon fine, quindi qualunque blocco precedente (stesso codice
+      // appena riattivato, o azienda diversa) non ha più senso.
+      sbloccaAzienda();
+
       // Se stiamo CAMBIANDO azienda (non la primissima configurazione),
       // ripuliamo tutto quello che apparteneva all'azienda precedente:
       // non avrebbe senso inviare un prodotto pensato per un'altra
       // azienda, o continuare a vedere le sue liste.
       if (codiceAzienda && codiceAzienda !== valore) {
         batch = [];
-        bloccoAzienda = false;
-        var banner = document.getElementById('bannerBloccoAzienda');
-        if (banner) banner.remove();
         renderBatch();
       }
 
