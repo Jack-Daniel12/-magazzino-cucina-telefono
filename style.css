@@ -339,6 +339,10 @@ button:disabled {
   padding: 2px 6px;
 }
 
+.btn-ricarica:disabled {
+  opacity: 0.35;
+}
+
 .riga-elenco {
   display: flex;
   justify-content: space-between;
