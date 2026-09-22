@@ -1,55 +1,52 @@
 // app.js — logica della pagina "Nuovo Prodotto"
+import { initFirebase, accediAnonimo } from './lib/base.js';
+import { verificaCodiceTelefono } from './lib/licenze.js';
+import { registraDispositivoTelefono, nuoviProdottiMultipli, elencoProdottiOggi, elencoGiacenzeAzienda } from './lib/prodottiTelefono.js';
+
 (function () {
+  var firebase = initFirebase(FIREBASE_CONFIG);
+  var db = firebase.db;
+  var auth = firebase.auth;
+
   var ICONA_OK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
   var ICONA_ERR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/></svg>';
-  var ICONA_INVIA = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
 
   var INTERVALLO_AGGIORNAMENTO_MS = 60 * 1000; // ogni minuto, come richiesto
 
-  function ottieniIdDispositivo() {
-    var id = localStorage.getItem('idDispositivo');
-    if (id) return id;
-    id = '';
-    for (var i = 0; i < 20; i++) id += Math.floor(Math.random() * 10);
-    localStorage.setItem('idDispositivo', id);
-    return id;
-  }
+  // Prima di poter leggere o scrivere qualunque cosa su Firestore, il
+  // telefono deve avere un accesso (anche anonimo): lo facciamo una
+  // volta sola all'avvio, e ogni funzione che parla col database
+  // aspetta questa stessa promessa prima di procedere — così non importa
+  // se l'utente tocca "Conferma" prima che l'accesso sia finito di
+  // configurarsi, non si perde nessuna interazione.
+  var prontoAutenticazione = (async function () {
+    await accediAnonimo(auth);
+    // Registra questo telefono nel registro anti-abuso (vedi
+    // prodottiTelefono.js): se fallisce non blocchiamo l'avvio della
+    // pagina, verrà ritentato implicitamente al primo invio.
+    try { await registraDispositivoTelefono(db, auth.currentUser.uid); } catch (e) {}
+  })();
 
-  // ---------------- CHIAMATA AL SERVER, CON RIPROVA AUTOMATICO ----------------
+  // ---------------- CHIAMATE, CON RIPROVA AUTOMATICO ----------------
+  // Stesso principio di prima (fino a 4 tentativi, pausa crescente), ma
+  // ora avvolge le funzioni che parlano con Firestore invece di un
+  // fetch verso Apps Script.
   var TENTATIVI_MASSIMI = 4;
-  var TIMEOUT_MS = 15000;
 
   function attesa(ms) {
     return new Promise(function (resolve) { setTimeout(resolve, ms); });
   }
 
-  function chiamaServerUnaVolta(azione, corpo) {
-    var controller = new AbortController();
-    var timer = setTimeout(function () { controller.abort(); }, TIMEOUT_MS);
-    return fetch(URL_SCRIPT + '?azione=' + encodeURIComponent(azione), {
-      method: 'POST',
-      signal: controller.signal,
-      // Content-Type "text/plain" (non "application/json") per evitare la
-      // richiesta preflight OPTIONS, che Apps Script gestisce male: pagina
-      // e Apps Script vivono su domini diversi, quindi è una richiesta
-      // davvero cross-origin. Non cambiare, anche se sembra "più corretto"
-      // usare application/json.
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(corpo || {})
-    }).then(function (r) {
-      if (!r.ok) throw new Error('Il server ha risposto con errore HTTP ' + r.status);
-      return r.json();
-    }).finally(function () {
-      clearTimeout(timer);
-    });
-  }
-
-  async function chiamaServer(azione, corpo) {
+  async function conRiprova(funzione) {
+    await prontoAutenticazione;
     var ultimoErrore;
     for (var tentativo = 1; tentativo <= TENTATIVI_MASSIMI; tentativo++) {
       try {
-        return await chiamaServerUnaVolta(azione, corpo);
+        return await funzione();
       } catch (err) {
+        // Un rifiuto per permessi (azienda sospesa/revocata) non si
+        // risolve riprovando: usciamo subito, il chiamante lo gestisce.
+        if (err && err.code === 'permission-denied') throw err;
         ultimoErrore = err;
         if (tentativo < TENTATIVI_MASSIMI) await attesa(700 * tentativo);
       }
@@ -78,7 +75,6 @@
     document.getElementById('overlayCaricamento').classList.add('hidden');
   }
 
-  var idDispositivo = ottieniIdDispositivo();
   var codiceAzienda = localStorage.getItem('codiceAzienda') || '';
   var bloccoAzienda = false;
   var batch = [];
@@ -95,10 +91,6 @@
 
     document.getElementById('btnModoEntrata').classList.toggle('selezionata', !eUscita);
     document.getElementById('btnModoUscita').classList.toggle('selezionata', eUscita);
-    // (nota: uso id diretti sopra, non querySelectorAll('.modo-btn'),
-    // proprio per non rischiare di intrecciarsi in futuro con altri
-    // selettori a schede della pagina — vedi il bug già preso e corretto
-    // una volta con la classe .scheda-btn condivisa)
 
     document.getElementById('labelNome').textContent = eUscita ? 'Prodotto già in magazzino' : 'Nome prodotto';
     document.getElementById('nome').placeholder = eUscita ? 'Scrivi il nome esatto...' : 'es. Farina 00 kg 25';
@@ -125,11 +117,11 @@
     } catch (e) { return ''; }
   }
 
-  // Mostrato quando il server risponde con bloccato:true (azienda
-  // sospesa/revocata dal fornitore) — distinto da un problema di rete,
+  // Mostrato quando l'azienda risulta sospesa/revocata (Firestore
+  // rifiuta con permission-denied) — distinto da un problema di rete,
   // che invece si risolve da solo riprovando più tardi. Non cancelliamo
-  // il codice salvato: se l'azienda viene riattivata, basta ricaricare la
-  // pagina, senza dover reinserire il codice da capo.
+  // il codice salvato: se l'azienda viene riattivata, basta ricaricare
+  // la pagina, senza dover reinserire il codice da capo.
   function mostraBloccoAzienda(motivo) {
     bloccoAzienda = true;
     if (intervalloAggiornamento) { clearInterval(intervalloAggiornamento); intervalloAggiornamento = null; }
@@ -147,19 +139,15 @@
   }
 
   // Annulla un blocco precedente (o non fa nulla se non eravamo bloccati:
-  // è sicuro chiamarla sempre). Serve perché una volta bloccati non c'era
-  // NESSUN modo di sbloccarsi senza ricaricare tutta la pagina — nemmeno
-  // riverificando con successo lo stesso codice, o passando a
-  // un'azienda diversa e valida: i pulsanti restavano disabilitati per
-  // sempre. Ora la richiamiamo su ogni verifica del codice riuscita.
+  // è sicuro chiamarla sempre) — richiamata su ogni verifica del codice
+  // riuscita, così un blocco non resta mai "per sempre" (bug corretto
+  // nella versione precedente, vedi guida).
   function sbloccaAzienda() {
     bloccoAzienda = false;
     var banner = document.getElementById('bannerBloccoAzienda');
     if (banner) banner.remove();
     document.getElementById('btnAggiungi').disabled = false;
     document.getElementById('btnRicarica').disabled = false;
-    // btnInviaTutti lo lascia decidere renderBatch() (resta disabilitato
-    // finché la lista "Da inviare" è vuota, che è corretto).
   }
 
   // ---------------- SCHERMATA CODICE AZIENDA ----------------
@@ -186,22 +174,15 @@
     impostaCaricamento(btn, 'Verifica...');
 
     try {
-      var d = await chiamaServer('verificaCodiceTelefono', { codice: valore });
+      var d = await conRiprova(function () { return verificaCodiceTelefono(db, valore); });
       if (!d.successo) {
         esito.className = 'esito errore';
         esito.innerHTML = ICONA_ERR + (d.errore || 'Codice non valido.');
         return;
       }
 
-      // Sblocchiamo sempre a questo punto: la verifica è appena andata a
-      // buon fine, quindi qualunque blocco precedente (stesso codice
-      // appena riattivato, o azienda diversa) non ha più senso.
       sbloccaAzienda();
 
-      // Se stiamo CAMBIANDO azienda (non la primissima configurazione),
-      // ripuliamo tutto quello che apparteneva all'azienda precedente:
-      // non avrebbe senso inviare un prodotto pensato per un'altra
-      // azienda, o continuare a vedere le sue liste.
       if (codiceAzienda && codiceAzienda !== valore) {
         batch = [];
         renderBatch();
@@ -221,9 +202,6 @@
     }
   }
 
-  // "Cambia azienda": riapre la stessa schermata usata la prima volta,
-  // ma con un pulsante Annulla in più (qui c'è sempre qualcosa da cui
-  // tornare indietro, a differenza della primissima configurazione).
   document.getElementById('btnCambiaAzienda').addEventListener('click', function () {
     if (batch.length > 0) {
       var conferma = window.confirm(
@@ -299,18 +277,11 @@
 
     var eUscita = modoCorrente === 'uscita';
 
-    // Controllo leggero (non blocca l'invio): un'uscita deve riferirsi a
-    // un prodotto che il telefono ha già visto nella scheda Magazzino.
-    // Il controllo vero e definitivo lo fa comunque il programma PC al
-    // momento della conferma, questo è solo per avvisare subito se il
-    // nome sembra scritto in modo diverso da come risulta a magazzino.
     if (eUscita && prodottiMagazzinoConosciuti.length > 0) {
       var trovato = prodottiMagazzinoConosciuti.some(function (n) { return n.toLowerCase() === nome.toLowerCase(); });
       if (!trovato) {
         esito.className = 'esito errore';
         esito.innerHTML = ICONA_ERR + 'Non trovo un prodotto con questo nome esatto in magazzino. Controlla la scheda "Magazzino" qui sotto, o aggiungilo comunque se sei sicuro.';
-        // Non blocchiamo: l'utente può comunque proseguire cliccando di
-        // nuovo (il messaggio resta visibile finché non aggiunge altro).
       }
     }
 
@@ -339,23 +310,20 @@
     esito.className = 'esito';
     esito.innerHTML = '';
 
-    var testoOriginale = testoBtn.textContent;
     testoBtn.textContent = 'Invio in corso...';
     btn.disabled = true;
     btn.classList.add('in-corso');
     mostraOverlayCaricamento('Invio in corso...');
 
     try {
-      var d = await chiamaServer('nuoviProdottiMultipli', {
-        idDispositivo: idDispositivo,
-        codice: codiceAzienda,
-        prodotti: batch.map(function (p) {
+      var d = await conRiprova(function () {
+        return nuoviProdottiMultipli(db, codiceAzienda, batch.map(function (p) {
           return {
             nome: p.nome, quantita: p.quantita, unitaMisura: p.unitaMisura,
             prezzoUnitario: p.prezzoUnitario || '', nota: p.nota,
             tipo: p.tipo === 'uscita' ? 'scarico' : 'carico'
           };
-        })
+        }));
       });
 
       if (d.successo) {
@@ -370,12 +338,16 @@
         esito.innerHTML = ICONA_ERR + (d.errore || 'Errore di invio dei dati.');
       }
     } catch (e) {
-      esito.className = 'esito errore';
-      esito.innerHTML = ICONA_ERR + 'Impossibile contattare il server dopo vari tentativi. Controlla la connessione e riprova.';
+      if (e && e.code === 'permission-denied') {
+        mostraBloccoAzienda('Questa azienda risulta sospesa o revocata. Contatta il fornitore.');
+      } else {
+        esito.className = 'esito errore';
+        esito.innerHTML = ICONA_ERR + 'Impossibile contattare il server dopo vari tentativi. Controlla la connessione e riprova.';
+      }
     } finally {
       btn.classList.remove('in-corso');
       nascondiOverlayCaricamento();
-      renderBatch(); // ripristina il testo/stato corretto del pulsante (Invia tutti (N) o disabilitato)
+      renderBatch();
     }
   });
 
@@ -394,13 +366,12 @@
   function caricaProdottiOggi() {
     if (!codiceAzienda || bloccoAzienda) return;
     var contenitore = document.getElementById('listaOggi');
-    chiamaServer('elencoProdottiOggi', { codice: codiceAzienda }).then(function (d) {
-      if (d.bloccato) { mostraBloccoAzienda(d.errore); return; }
-      if (!d.successo || !d.prodotti || d.prodotti.length === 0) {
+    conRiprova(function () { return elencoProdottiOggi(db, codiceAzienda); }).then(function (prodotti) {
+      if (!prodotti || prodotti.length === 0) {
         contenitore.innerHTML = '<div class="lista-vuota">Ancora nessun prodotto inserito oggi.</div>';
         return;
       }
-      contenitore.innerHTML = d.prodotti.map(function (p) {
+      contenitore.innerHTML = prodotti.map(function (p) {
         var etichettaStato = p.stato === 'rifiutato' ? ' (scartato)' : (p.stato === 'importato' ? ' ✓' : '');
         var eUscita = p.tipo === 'scarico';
         return '<div class="riga-elenco stato-' + escapeHtml(p.stato) + '">' +
@@ -409,20 +380,18 @@
           '<span class="dettaglio-prodotto">' + escapeHtml(p.quantita) + ' ' + escapeHtml(p.unitaMisura || '') + ' · ' + formattaOra(p.timestamp) + etichettaStato + '</span>' +
           '</div>';
       }).join('');
-    }).catch(function () {
+    }).catch(function (e) {
+      if (e && e.code === 'permission-denied') { mostraBloccoAzienda('Questa azienda risulta sospesa o revocata. Contatta il fornitore.'); return; }
       contenitore.innerHTML = '<div class="lista-vuota">Impossibile caricare l\'elenco dopo vari tentativi (controlla la connessione).</div>';
     });
   }
 
-  // Mostra/aggiorna il menu a tendina con i prodotti che contengono il
-  // testo scritto finora (solo in modalità Uscita). Il testo cercato
-  // viene evidenziato in ogni voce, per farlo individuare a colpo d'occhio.
   function mostraAutocomplete(testoRicerca) {
     var lista = document.getElementById('autocompleteLista');
     var testo = (testoRicerca || '').trim().toLowerCase();
     var risultati = prodottiMagazzinoConosciuti.filter(function (nome) {
       return !testo || nome.toLowerCase().indexOf(testo) !== -1;
-    }).slice(0, 12); // non più di 12 voci, per restare comodo su schermo piccolo
+    }).slice(0, 12);
 
     if (risultati.length === 0) {
       lista.innerHTML = '<div class="autocomplete-vuoto">' +
@@ -451,9 +420,6 @@
       escapeHtml(nome.slice(indice + testo.length));
   }
 
-  // Se il menu è aperto quando arrivano dati di magazzino più freschi
-  // (sincronizzazione ogni minuto), lo aggiorniamo subito, senza
-  // costringere l'utente a riscrivere per vedere i prodotti nuovi.
   function aggiornaSuggerimentiProdotti() {
     var lista = document.getElementById('autocompleteLista');
     if (modoCorrente === 'uscita' && lista.classList.contains('visibile')) {
@@ -474,12 +440,6 @@
   });
 
   campoNome.addEventListener('blur', function () {
-    // Piccolo ritardo: dà il tempo al tocco su una voce del menu di
-    // registrarsi prima che il menu sparisca. Controlliamo comunque,
-    // quando il timer scatta, che il campo non abbia RIPRESO il focus
-    // nel frattempo (es. l'utente è tornato a scriverci) — altrimenti un
-    // timer rimasto in sospeso da un blur precedente potrebbe nascondere
-    // il menu mentre l'utente lo sta ancora usando.
     setTimeout(function () {
       if (document.activeElement !== campoNome) nascondiAutocomplete();
     }, 200);
@@ -496,30 +456,27 @@
   function caricaGiacenzeAzienda() {
     if (!codiceAzienda || bloccoAzienda) return;
     var contenitore = document.getElementById('listaGiacenze');
-    chiamaServer('elencoGiacenzeAzienda', { codice: codiceAzienda }).then(function (d) {
-      if (d.bloccato) { mostraBloccoAzienda(d.errore); return; }
-      if (!d.successo || !d.prodotti || d.prodotti.length === 0) {
+    conRiprova(function () { return elencoGiacenzeAzienda(db, codiceAzienda); }).then(function (prodotti) {
+      if (!prodotti || prodotti.length === 0) {
         contenitore.innerHTML = '<div class="lista-vuota">Nessun dato disponibile ancora.</div>';
         prodottiMagazzinoConosciuti = [];
         aggiornaSuggerimentiProdotti();
         return;
       }
-      prodottiMagazzinoConosciuti = d.prodotti.map(function (p) { return p.nome; });
+      prodottiMagazzinoConosciuti = prodotti.map(function (p) { return p.nome; });
       aggiornaSuggerimentiProdotti();
-      contenitore.innerHTML = d.prodotti.map(function (p) {
+      contenitore.innerHTML = prodotti.map(function (p) {
         return '<div class="riga-elenco">' +
           '<span class="nome-prodotto">' + escapeHtml(p.nome) + '</span>' +
           '<span class="dettaglio-prodotto">' + escapeHtml(p.giacenza) + ' ' + escapeHtml(p.unitaMisura || '') + '</span>' +
           '</div>';
       }).join('');
-    }).catch(function () {
+    }).catch(function (e) {
+      if (e && e.code === 'permission-denied') { mostraBloccoAzienda('Questa azienda risulta sospesa o revocata. Contatta il fornitore.'); return; }
       contenitore.innerHTML = '<div class="lista-vuota">Impossibile caricare l\'elenco dopo vari tentativi (controlla la connessione).</div>';
     });
   }
 
-  // Aggiorna entrambe le liste insieme (usate dal pulsante di ricarica
-  // manuale e dall'aggiornamento automatico ogni minuto) e aggiorna
-  // l'orario mostrato.
   function aggiornaListe() {
     if (bloccoAzienda) return;
     caricaProdottiOggi();

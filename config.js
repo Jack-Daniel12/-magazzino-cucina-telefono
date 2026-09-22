@@ -1,10 +1,15 @@
 // config.js
-// Incolla qui sotto, tra virgolette, l'indirizzo del tuo Apps Script
-// pubblicato (quello che finisce in /exec). È lo stesso indirizzo già
-// usato oggi dal programma sul PC per il controllo della licenza.
 //
-// IMPORTANTE: se in futuro rigeneri il deployment dell'Apps Script con
-// "Nuovo deployment" (invece di "Gestisci deployment -> matita -> Nuova
-// versione"), l'indirizzo cambia e va aggiornato anche qui.
+// Gli stessi identici valori usati in pannello-amministrazione/config.js
+// (console Firebase → Impostazioni progetto → "Le tue app" → icona web).
+// Non sono un segreto: questa pagina può stare in un repository
+// GitHub pubblico senza problemi.
 
-var URL_SCRIPT = "https://script.google.com/macros/s/AKfycbwRMfpVc_2spcYtJ6WBY_rMe4jhM2C2lqClRwnqM9HbJztA2Czdx5-Gn2vNHVlImGUfsw/exec";
+var FIREBASE_CONFIG = {
+  apiKey: "INCOLLA_QUI",
+  authDomain: "INCOLLA_QUI.firebaseapp.com",
+  projectId: "INCOLLA_QUI",
+  storageBucket: "INCOLLA_QUI.appspot.com",
+  messagingSenderId: "INCOLLA_QUI",
+  appId: "INCOLLA_QUI"
+};
