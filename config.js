@@ -6,10 +6,10 @@
 // GitHub pubblico senza problemi.
 
 var FIREBASE_CONFIG = {
-  apiKey: "INCOLLA_QUI",
-  authDomain: "INCOLLA_QUI.firebaseapp.com",
-  projectId: "INCOLLA_QUI",
-  storageBucket: "INCOLLA_QUI.appspot.com",
-  messagingSenderId: "INCOLLA_QUI",
-  appId: "INCOLLA_QUI"
+  apiKey: "AIzaSyD2yEvQaoUaT4ac6ELJ9EWSjLd58y8ejBc",
+  authDomain: "gestionale-magazzino-28de6.firebaseapp.com",
+  projectId: "gestionale-magazzino-28de6",
+  storageBucket: "gestionale-magazzino-28de6.firebasestorage.app",
+  messagingSenderId: "795812738394",
+  appId: "1:795812738394:web:9f2ff8419f2ef492f22f63"
 };
